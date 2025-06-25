@@ -62,6 +62,10 @@ def handle_webhook():
             for entry in data['entry']:
                 for messaging_event in entry['messaging']:
                     if 'message' in messaging_event:
+                        # Skip echo messages (sent by the page itself)
+                        if 'is_echo' in messaging_event['message'] and messaging_event['message']['is_echo']:
+                            logger.info("Skipping echo message.")
+                            continue
                         sender_id = messaging_event['sender']['id']
                         message_text = messaging_event['message'].get('text', '')
                         
