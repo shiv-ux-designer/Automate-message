@@ -18,6 +18,8 @@ CORS(app)
 
 # Configuration
 LANGFLOW_API_URL = os.getenv('LANGFLOW_API_URL', 'http://localhost:3000')
+LANGFLOW_WORKFLOW_ID = os.getenv('LANGFLOW_WORKFLOW_ID', '')
+LANGFLOW_API_TOKEN = os.getenv('LANGFLOW_API_TOKEN', '')
 FACEBOOK_VERIFY_TOKEN = os.getenv('FACEBOOK_VERIFY_TOKEN', 'your_verify_token')
 FACEBOOK_PAGE_ACCESS_TOKEN = os.getenv('FACEBOOK_PAGE_ACCESS_TOKEN', '')
 
@@ -82,18 +84,27 @@ def process_message_with_langflow(sender_id, message_text):
     try:
         # Prepare data for Langflow
         langflow_data = {
-            "input": message_text,
-            "user_id": sender_id,
-            "conversation_id": f"fb_{sender_id}"
+            "input_value": message_text,
+            "output_type": "chat",
+            "input_type": "chat"
         }
         
         logger.info(f"Sending to Langflow: {langflow_data}")
         
+        # Build the Langflow API URL
+        url = f"{LANGFLOW_API_URL}/api/v1/run/{LANGFLOW_WORKFLOW_ID}"
+        
+        # Set headers with Authorization
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {LANGFLOW_API_TOKEN}'
+        }
+        
         # Make request to Langflow API
         response = requests.post(
-            f"{LANGFLOW_API_URL}/api/v1/run/your-workflow-id",  # Replace with your actual workflow ID
+            url,
             json=langflow_data,
-            headers={'Content-Type': 'application/json'},
+            headers=headers,
             timeout=30
         )
         
