@@ -115,7 +115,13 @@ def process_message_with_langflow(sender_id, message_text):
         if response.status_code == 200:
             result = response.json()
             logger.info(f"Langflow response: {result}")
-            return result.get('output', 'Sorry, I could not process your request.')
+            try:
+                # Try to extract the AI message from the nested structure
+                ai_message = result['outputs'][0]['outputs'][0]['results']['message']['text']
+                return ai_message
+            except Exception as e:
+                logger.error(f"Error extracting AI message: {e}")
+                return "Sorry, I could not process your request."
         else:
             logger.error(f"Langflow API error: {response.status_code} - {response.text}")
             return "Sorry, I'm having trouble processing your request right now."
