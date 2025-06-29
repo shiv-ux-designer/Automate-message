@@ -109,7 +109,7 @@ def process_message_with_langflow(sender_id, message_text):
             url,
             json=langflow_data,
             headers=headers,
-            timeout=30
+            timeout=60
         )
         
         if response.status_code == 200:
