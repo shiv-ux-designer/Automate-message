@@ -52,32 +52,22 @@ def handle_webhook():
         data = request.get_json()
         logger.info(f"Received webhook data: {json.dumps(data, indent=2)}")
 
-        # Facebook Messenger
-        if 'object' in data and data['object'] == 'page':
+        # Facebook Messenger or Instagram (both use 'messaging' array)
+        if 'object' in data and data['object'] in ['page', 'instagram']:
             for entry in data['entry']:
-                for messaging_event in entry['messaging']:
+                for messaging_event in entry.get('messaging', []):
                     if 'message' in messaging_event:
                         if 'is_echo' in messaging_event['message'] and messaging_event['message']['is_echo']:
                             logger.info("Skipping echo message.")
                             continue
                         sender_id = messaging_event['sender']['id']
                         message_text = messaging_event['message'].get('text', '')
-                        logger.info(f"Processing Messenger message from {sender_id}: {message_text}")
+                        logger.info(f"Processing message from {sender_id}: {message_text}")
                         response = process_message_with_langflow(sender_id, message_text)
-                        send_response_to_facebook(sender_id, response)
-
-        # Instagram
-        elif 'object' in data and data['object'] == 'instagram':
-            for entry in data['entry']:
-                for change in entry.get('changes', []):
-                    if change['field'] == 'messages':
-                        value = change['value']
-                        sender_id = value['from']['id']
-                        message_text = value.get('message', '')
-                        logger.info(f"Processing Instagram message from {sender_id}: {message_text}")
-                        response = process_message_with_langflow(sender_id, message_text)
-                        # Instagram API for automated replies is restricted; log the response
-                        logger.info(f"Langflow response for Instagram: {response}")
+                        if data['object'] == 'page':
+                            send_response_to_facebook(sender_id, response)
+                        elif data['object'] == 'instagram':
+                            send_response_to_instagram(sender_id, response)
 
         return jsonify({"status": "success"}), 200
 
@@ -143,6 +133,27 @@ def send_response_to_facebook(recipient_id, message_text):
             logger.error(f"Failed to send message to Facebook: {response.status_code} - {response.text}")
     except Exception as e:
         logger.error(f"Error sending message to Facebook: {str(e)}")
+
+def send_response_to_instagram(recipient_id, message_text):
+    try:
+        url = f"https://graph.facebook.com/v18.0/me/messages"
+        data = {
+            "recipient": {"id": recipient_id},
+            "message": {"text": message_text}
+        }
+        headers = {
+            "Content-Type": "application/json"
+        }
+        params = {
+            "access_token": INSTAGRAM_PAGE_ACCESS_TOKEN
+        }
+        response = requests.post(url, json=data, headers=headers, params=params)
+        if response.status_code == 200:
+            logger.info(f"Message sent successfully to Instagram user {recipient_id}")
+        else:
+            logger.error(f"Failed to send message to Instagram: {response.status_code} - {response.text}")
+    except Exception as e:
+        logger.error(f"Error sending message to Instagram: {str(e)}")
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
